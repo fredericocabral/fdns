@@ -1,21 +1,36 @@
 import socket
 import socketserver
+import ssl
 
-def upstream(data):
-    DNSServer = '208.67.222.222'
-    DNSPort = 53
-    
+
+DNSServer = '1.1.1.1'
+
+
+def upstream_with_tls(data):
     upstream_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    upstream_sock.connect((DNSServer, DNSPort))
+
+    # Wrap socket with SSL/TLS
+    context = ssl.create_default_context()
+    tls_sock = context.wrap_socket(upstream_sock, server_hostname=DNSServer)
+        
+    tls_sock.connect((DNSServer, 853))
+    tls_sock.sendall(data)
+    received = tls_sock.recv(1024)
+
+    return received
+
+
+def upstream_without_tls(data):
+    upstream_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    upstream_sock.connect((DNSServer, 53))
 
     upstream_sock.sendall(data)
-
     received = upstream_sock.recv(1024)
 
     return received
 
+
 def upstream_udp(data):
-    DNSServer = '208.67.222.222'
     DNSPort = 53
     
     upstream_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -29,7 +44,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request.recv(1024)
         print('Request receveid')
-        result = upstream(data)
+        #result = upstream(data)
+        result = upstream_with_tls(data)
         self.request.sendall(result)
 
 
