@@ -1,9 +1,14 @@
+import os
 import socket
 import socketserver
 import ssl
+import threading
 
+CLOUDFLARE = '1.1.1.1'
+DNSSERVER = os.getenv('DNSSERVER', CLOUDFLARE)
 
-DNSServer = '1.1.1.1'
+PORT = 9999
+HOST = ''
 
 
 def upstream_with_tls(data):
@@ -11,67 +16,48 @@ def upstream_with_tls(data):
 
     # Wrap socket with SSL/TLS
     context = ssl.create_default_context()
-    tls_sock = context.wrap_socket(upstream_sock, server_hostname=DNSServer)
+    tls_sock = context.wrap_socket(upstream_sock, server_hostname=DNSSERVER)
         
-    tls_sock.connect((DNSServer, 853))
+    tls_sock.connect((DNSSERVER, 853))
     tls_sock.sendall(data)
-    received = tls_sock.recv(1024)
-
-    return received
-
-
-def upstream_without_tls(data):
-    upstream_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    upstream_sock.connect((DNSServer, 53))
-
-    upstream_sock.sendall(data)
-    received = upstream_sock.recv(1024)
-
-    return received
-
-
-def upstream_udp(data):
-    DNSPort = 53
-    
-    upstream_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    upstream_sock.sendto(data, (DNSServer, DNSPort))
-    received = upstream_sock.recv(1024)
-
-    return received
+    return tls_sock.recv(1024)
 
 
 class TCPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request.recv(1024)
-        print('Request receveid')
-        #result = upstream(data)
+        print('TCP request receveid')
         result = upstream_with_tls(data)
         self.request.sendall(result)
 
 
-# INPROGRESS
+#def convert(data):
+#    pre_length = "\x00"+chr(len(data))
+#    data = pre_length + data
+#    return _query
+
+
+# PENDING
 class UDPHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        data = self.request[0]
+        print(self.request)
+        data = self.request[0].strip()
         socket = self.request[1]
-        print("{} wrote:".format(self.client_address[0]))
-
-        epa = upstream_udp(data)
-
-        socket.sendto(data.upper(), self.client_address)
+        print('UDP request receveid')
+        result = upstream_without_tls(data)
+        socket.sendto(result, self.client_address)
 
 
 def main():
-    port = 9999
+    tcp = socketserver.ThreadingTCPServer((HOST, PORT), TCPHandler)
+    tcp_thread = threading.Thread(target=tcp.serve_forever())
+    tcp_thread.daemon = True
+    tcp_thread.start()
 
-    tcp = socketserver.ThreadingTCPServer(('', port), TCPHandler)
-    print(f'Listening TCP port {port}')
-
-    #udp = socketserver.ThreadingUDPServer(('', port), UDPHandler)
-    #print(f'Listening UDP port {port}')
-
-    #udp.serve_forever()
-    tcp.serve_forever()
+    #udp = socketserver.ThreadingUDPServer((HOST, PORT), UDPHandler)
+    #udp_thread = threading.Thread(target=udp.serve_forever())
+    #udp_thread.daemon = True
+    #udp_thread.start()
 
     try:
         while True:
@@ -83,4 +69,5 @@ def main():
 
 if __name__ == "__main__":
     print('starting fdns')
+    print(f'UPSTREAM DNS: {DNSSERVER}')
     main()

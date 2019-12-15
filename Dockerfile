@@ -5,5 +5,3 @@ COPY . app
 EXPOSE 9999
 
 CMD ["python", "app/fdns2.py"]
-
-
