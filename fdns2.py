@@ -82,4 +82,5 @@ def main():
         tcp.shutdown()
 
 if __name__ == "__main__":
+    print('starting fdns')
     main()
