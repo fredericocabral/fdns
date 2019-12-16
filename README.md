@@ -1,3 +1,7 @@
+# DNS-over-TLS
+Exemple of a basic DNS Proxy with TLS using Python, relying only on builtin modules
+
+
 ## Running
 
 ### Building Container
@@ -6,6 +10,8 @@ docker build . -t fdns
 ```
 
 ### Running
+The docker container will expose the port 9999
+
 ```
 docker run -it -p 53:9999 fdns
 ```
@@ -13,6 +19,11 @@ docker run -it -p 53:9999 fdns
 ### Running with another DNSServer
 ```
 docker run -it -p 53:9999 -e "DNSSERVER=8.8.8.8"  fdns
+```
+
+### Validating
+```
+dig +tcp  @127.0.0.1 n26.com
 ```
 
 
@@ -42,8 +53,7 @@ context.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
 
 
 
-#### What other improvements do you think would be interesting to add to the project
-
+### What other improvements do you think would be interesting to add to the project
 
 - Better validation strategy and defensive programming. For example: if the query is a valid DNS query; if a real and whitelisted upstream server is being used and proper exception management.
 
@@ -51,4 +61,4 @@ context.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
 
 - Minimize the latency overhead due to the TLS, decreasing the number of new TCP connections created. With more time, I would investigate the recommendation for a local DNS request aggregator as mentioned here: https://tools.ietf.org/id/draft-ietf-dprive-dns-over-tls-05.html#rfc.section.5
 
-
+- I would try to implement the same proxy using another tech-stack. GoLang or Rust would be good candidates. When compared to Python Global Interpreter Lock issues, my assumption is we could get better parallelism environment with GoLang and Rust.
